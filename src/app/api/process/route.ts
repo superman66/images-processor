@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       
       // Process image with sharp
       const image = sharp(buffer);
-      const metadata = await image.metadata();
+    
       
       // Trim transparent pixels
       const trimmedImage = await image.trim().toBuffer();
