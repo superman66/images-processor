@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import JSZip from 'jszip';
+
+// Add suffix to filename before extension
+function addSuffixToFilename(filename: string): string {
+  const lastDotIndex = filename.lastIndexOf('.');
+  if (lastDotIndex === -1) return `${filename}-processed`;
+  return `${filename.substring(0, lastDotIndex)}-processed${filename.substring(lastDotIndex)}`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +30,7 @@ export async function POST(req: NextRequest) {
       const trimmedImage = await image.trim().toBuffer();
       
       processedImages.push({
-        name: file.name,
+        name: addSuffixToFilename(file.name),
         data: trimmedImage
       });
     }
@@ -39,20 +45,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If multiple images, create zip
-    const zip = new JSZip();
-    processedImages.forEach(img => {
-      zip.file(img.name, img.data);
-    });
+    // If multiple images, return array of base64 encoded images
+    const imagesData = processedImages.map(img => ({
+      name: img.name,
+      data: img.data.toString('base64')
+    }));
 
-    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-    return new NextResponse(zipBuffer, {
-      headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': 'attachment; filename="processed-images.zip"'
-      }
-    });
+    return NextResponse.json(imagesData);
 
   } catch (error) {
     console.error('Error processing images:', error);

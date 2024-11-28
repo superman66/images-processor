@@ -59,25 +59,51 @@ export default function Home() {
         throw new Error("处理图片时出错");
       }
 
-      // 获取文件名
-      const contentDisposition = response.headers.get("content-disposition");
-      const filename = contentDisposition?.split("filename=")[1]?.replace(/"/g, "") || "processed-images.zip";
-
-      // 下载文件
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const contentType = response.headers.get("content-type");
+      
+      if (contentType?.includes("image/")) {
+        // Single image case
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get("content-disposition");
+        const filename = contentDisposition?.split("filename=")[1]?.replace(/"/g, "") || "processed-image.png";
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        // Multiple images case
+        const imagesData = await response.json();
+        
+        // Download each image
+        for (const img of imagesData) {
+          const byteCharacters = atob(img.data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/png' });
+          
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = img.name;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }
+      }
 
       // 显示成功消息
       const successMessage = fileCount === 1 
         ? "图片处理成功，已开始下载" 
-        : `${fileCount} 个图片处理成功，已开始下载压缩包`;
+        : `${fileCount} 个图片处理成功，正在下载`;
       showToast(successMessage, 'success');
     } catch (error) {
       console.error("Error:", error);
